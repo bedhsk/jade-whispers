@@ -1,0 +1,33 @@
+{
+
+  "name": "ecommerce-antiguedades",
+
+  "version": "1.0.0",
+
+  "private": true,
+
+  "workspaces": [
+
+    "apps/*",
+
+    "packages/*"
+
+  ],
+
+  "scripts": {
+
+    "dev": "turbo run dev",
+
+    "build": "turbo run build",
+
+    "start": "turbo run start"
+
+  },
+
+  "devDependencies": {
+
+    "turbo": "latest"
+
+  }
+
+}
