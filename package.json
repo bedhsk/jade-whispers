@@ -7,13 +7,14 @@
     "apps/*",
     "packages/*"
   ],
-
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "start": "turbo run start"
+    "start": "turbo run start",
+    "db:up": "docker-compose up -d",
+    "db:down": "docker-compose down",
+    "db:studio": "cd apps/backend && npx prisma studio"
   },
-
   "devDependencies": {
     "turbo": "latest"
   }

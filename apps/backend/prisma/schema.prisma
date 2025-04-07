@@ -1,0 +1,180 @@
+// This is your Prisma schema file for Jade Whispers
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  name          String?
+  password      String
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  orders        Order[]
+  addresses     Address[]
+  reviews       Review[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Address {
+  id            Int       @id @default(autoincrement())
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id])
+  street        String
+  city          String
+  state         String
+  postalCode    String
+  country       String
+  isDefault     Boolean   @default(false)
+
+  @@index([userId])
+}
+
+model Product {
+  id                Int               @id @default(autoincrement())
+  name              String
+  description       String
+  comicDescription  String?           // Para tu descripción cómica
+  supernaturalStory String?           // Para la historia sobrenatural
+  price             Decimal          @db.Decimal(10, 2)
+  stock             Int               @default(0)
+  dynasty           String?           // Ej: Ming, Qing, etc.
+  material          String?           // Ej: Jade, Porcelana, etc.
+  dimensions        String?
+  weight            Float?
+  certificateId     String?           // ID único del certificado sobrenatural
+  origin            String?           // Origen de la antigüedad
+  featured          Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  images            ProductImage[]
+  categories        CategoryProduct[]
+  orderItems        OrderItem[]
+  reviews           Review[]
+  supernaturalEffects ProductEffect[]
+}
+
+model ProductImage {
+  id            Int       @id @default(autoincrement())
+  productId     Int
+  product       Product   @relation(fields: [productId], references: [id])
+  imageUrl      String
+  altText       String?
+  isPrimary     Boolean   @default(false)
+  position      Int       @default(0)
+  width         Int?
+  height        Int?
+  createdAt     DateTime  @default(now())
+
+  @@index([productId])
+}
+
+model Category {
+  id            Int               @id @default(autoincrement())
+  name          String            @unique
+  description   String?
+  iconUrl       String?           // URL para el ícono de la categoría
+  products      CategoryProduct[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model CategoryProduct {
+  productId     Int
+  categoryId    Int
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category      Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@index([productId])
+  @@index([categoryId])
+}
+
+model Order {
+  id                Int         @id @default(autoincrement())
+  userId            Int
+  user              User        @relation(fields: [userId], references: [id])
+  status            OrderStatus
+  total             Decimal     @db.Decimal(10, 2)
+  shippingAddress   String
+  paymentMethod     String
+  paymentId         String?
+  hasSupernatural   Boolean     @default(true)  // Indica si el pedido tiene seguro sobrenatural
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  items             OrderItem[]
+
+  @@index([userId])
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model OrderItem {
+  id            Int       @id @default(autoincrement())
+  orderId       Int
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     Int
+  product       Product   @relation(fields: [productId], references: [id])
+  quantity      Int
+  price         Decimal   @db.Decimal(10, 2)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Review {
+  id                    Int       @id @default(autoincrement())
+  productId             Int
+  product               Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId                Int
+  user                  User      @relation(fields: [userId], references: [id])
+  rating                Int       // 1-5 estrellas
+  comment               String
+  supernaturalExperience String?   // Experiencia sobrenatural con el producto
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([productId])
+  @@index([userId])
+}
+
+model SupernaturalEffect {
+  id            Int             @id @default(autoincrement())
+  name          String          @unique
+  description   String
+  riskLevel     String          // Bajo, Medio, Alto
+  products      ProductEffect[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model ProductEffect {
+  productId     Int
+  product       Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  effectId      Int
+  effect        SupernaturalEffect @relation(fields: [effectId], references: [id], onDelete: Cascade)
+  description   String?            // Descripción específica para este producto
+  isGuaranteed  Boolean            @default(false) // Si el efecto está garantizado
+
+  @@id([productId, effectId])
+  @@index([productId])
+  @@index([effectId])
+}
