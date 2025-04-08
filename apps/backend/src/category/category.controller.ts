@@ -26,6 +26,10 @@ import {
   UpdateCategoryDto,
   CategoryProductsDto,
 } from './dto/update-category.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '@prisma/client';
 
 @ApiTags('categories')
 @Controller('categories')
@@ -33,6 +37,8 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear nueva categoría' })
   @ApiResponse({ status: 201, description: 'Categoría creada con éxito' })
@@ -90,6 +96,8 @@ export class CategoryController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar una categoría' })
   @ApiParam({ name: 'id', description: 'ID de la categoría' })
@@ -106,6 +114,8 @@ export class CategoryController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar una categoría' })
@@ -119,6 +129,8 @@ export class CategoryController {
   }
 
   @Post(':id/products')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Agregar productos a una categoría' })
   @ApiParam({ name: 'id', description: 'ID de la categoría' })
@@ -141,6 +153,8 @@ export class CategoryController {
   }
 
   @Delete(':id/products')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eliminar productos de una categoría' })
   @ApiParam({ name: 'id', description: 'ID de la categoría' })
