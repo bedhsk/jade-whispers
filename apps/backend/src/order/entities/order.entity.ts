@@ -1,9 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Decimal } from '@prisma/client/runtime/library';
 import { OrderItem } from 'src/order-item/entities/order-item.entity';
-
-import { OrderStatus } from '@prisma/client';
 import { User } from 'src/user/entities/user.entity';
+
+export enum OrderStatus {
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  SHIPPED = 'SHIPPED',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED',
+}
 
 export class Order {
   @ApiProperty({ description: 'ID único del pedido' })
