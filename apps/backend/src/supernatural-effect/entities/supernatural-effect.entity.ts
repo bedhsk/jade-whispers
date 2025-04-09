@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ProductEffect } from '../../product/entities/product-effect.entity';
+import { ProductEffect } from 'src/product-effect/entities/product-effect.entity';
 
 export class SupernaturalEffect {
   @ApiProperty({ description: 'ID único del efecto' })

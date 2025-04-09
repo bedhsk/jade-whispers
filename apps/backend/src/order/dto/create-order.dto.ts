@@ -12,7 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { OrderStatus } from '../entities/order.entity';
+import { OrderStatus } from '@prisma/client';
 
 export class CreateOrderItemDto {
   @ApiProperty({
