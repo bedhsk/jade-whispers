@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -14,18 +14,34 @@ import productService, {
   PaginatedResponse,
 } from "@/services/api/productService";
 
+// Define type for sort options to improve type safety
+type SortOption = "featured" | "price-low" | "price-high" | "newest";
+type SortParams = {
+  featured?: boolean;
+  sortBy?: "name" | "price" | "createdAt";
+  sortOrder?: "asc" | "desc";
+  page: number;
+  limit: number;
+};
+
+type Category = {
+  id: number;
+  name: string;
+  imageUrl: string;
+  slug: string;
+};
+
 export default function CollectionPage() {
   const searchParams = useSearchParams();
 
   // Estado para filtros y productos
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<string>("featured");
+  const [sortBy, setSortBy] = useState<SortOption>("featured");
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<
-    Array<{ id: number; name: string; imageUrl: string; slug: string }>
-  >([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Obtener la categoría de los parámetros de URL al cargar la página
@@ -46,34 +62,58 @@ export default function CollectionPage() {
 
   // Cargar categorías
   useEffect(() => {
-    // Por ahora usamos datos de ejemplo, pero en una implementación real
-    // estos datos vendrían del backend a través de un servicio de categorías
-    setCategories([
-      {
-        id: 1,
-        name: "MALDICIONES LEVES",
-        imageUrl: "/images/category-1.jpg",
-        slug: "maldiciones-leves",
-      },
-      {
-        id: 2,
-        name: "FANTASMAS AMIGABLES",
-        imageUrl: "/images/category-2.jpg",
-        slug: "fantasmas-amigables",
-      },
-      {
-        id: 3,
-        name: "CONSEJOS DUDOSOS",
-        imageUrl: "/images/category-3.jpg",
-        slug: "consejos-dudosos",
-      },
-      {
-        id: 4,
-        name: "BRISAS IMPERIALES",
-        imageUrl: "/images/category-4.jpg",
-        slug: "brisas-imperiales",
-      },
-    ]);
+    setCategoriesLoading(true);
+    // En una implementación real, aquí se cargarían las categorías desde el API
+    // Simulación de carga de datos
+    const loadCategories = async () => {
+      try {
+        // Simulación de llamada API (reemplazar con real API call)
+        setCategories([
+          {
+            id: 1,
+            name: "MALDICIONES LEVES",
+            imageUrl: "/images/category-1.jpg",
+            slug: "maldiciones-leves",
+          },
+          {
+            id: 2,
+            name: "FANTASMAS AMIGABLES",
+            imageUrl: "/images/category-2.jpg",
+            slug: "fantasmas-amigables",
+          },
+          {
+            id: 3,
+            name: "CONSEJOS DUDOSOS",
+            imageUrl: "/images/category-3.jpg",
+            slug: "consejos-dudosos",
+          },
+          {
+            id: 4,
+            name: "BRISAS IMPERIALES",
+            imageUrl: "/images/category-4.jpg",
+            slug: "brisas-imperiales",
+          },
+        ]);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
+  // Generar parámetros de ordenación basados en sortBy
+  const getSortParams = useCallback((sortOption: SortOption): SortParams => {
+    switch (sortOption) {
+      case "featured":
+        return { featured: true, page: 1, limit: 20 };
+      case "price-low":
+        return { sortBy: "price", sortOrder: "asc", page: 1, limit: 20 };
+      case "price-high":
+        return { sortBy: "price", sortOrder: "desc", page: 1, limit: 20 };
+      default:
+        return { page: 1, limit: 20 };
+    }
   }, []);
 
   // Cargar productos
@@ -90,21 +130,8 @@ export default function CollectionPage() {
           productsResponse =
             await productService.getProductsByCategory(activeCategoryId);
         } else {
-          // Para obtener productos ordenados por destacados primero
-          const sortParams =
-            sortBy === "featured"
-              ? { featured: true }
-              : sortBy === "price-low"
-                ? { sortBy: "price", sortOrder: "asc" }
-                : sortBy === "price-high"
-                  ? { sortBy: "price", sortOrder: "desc" }
-                  : {};
-
-          productsResponse = await productService.getProducts({
-            page: 1,
-            limit: 20,
-            ...sortParams,
-          });
+          const sortParams = getSortParams(sortBy);
+          productsResponse = await productService.getProducts(sortParams);
         }
 
         setProducts(productsResponse.data);
@@ -119,33 +146,76 @@ export default function CollectionPage() {
     }
 
     loadProducts();
-  }, [activeCategoryId, sortBy]);
+  }, [activeCategoryId, sortBy, getSortParams]);
 
-  // Ordenar productos
-  const sortedProducts = [...products].sort((a, b) => {
-    if (sortBy === "price-low") return Number(a.price) - Number(b.price);
-    if (sortBy === "price-high") return Number(b.price) - Number(a.price);
-    if (sortBy === "featured") {
-      // Primero los destacados, luego por fecha de creación más reciente
-      if (a.featured && !b.featured) return -1;
-      if (!a.featured && b.featured) return 1;
+  // Memoize los productos ordenados para evitar ordenar en cada renderizado
+  const sortedProducts = useMemo(() => {
+    return [...products].sort((a, b) => {
+      if (sortBy === "price-low") return Number(a.price) - Number(b.price);
+      if (sortBy === "price-high") return Number(b.price) - Number(a.price);
+      if (sortBy === "featured") {
+        // Primero los destacados, luego por fecha de creación más reciente
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      }
+      // Por defecto, orden por fecha de creación
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }
-    // Por defecto, orden por fecha de creación
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+    });
+  }, [products, sortBy]);
 
   // Función para resetear el filtro
-  const resetFilter = () => {
+  const resetFilter = useCallback(() => {
     setActiveCategory(null);
     setActiveCategoryId(null);
-  };
+  }, []);
 
   // Función para manejar el cambio de categoría
-  const handleCategoryChange = (slug: string, id: number) => {
+  const handleCategoryChange = useCallback((slug: string, id: number) => {
     setActiveCategory(slug);
     setActiveCategoryId(id);
-  };
+  }, []);
+
+  // Maneja el cambio de categoría desde FilterSortBar
+  const handleFilterCategoryChange = useCallback(
+    (slug: string | null) => {
+      if (slug === null) {
+        resetFilter();
+        return;
+      }
+
+      const category = categories.find((c) => c.slug === slug);
+      if (category) {
+        handleCategoryChange(slug, category.id);
+      } else {
+        resetFilter();
+      }
+    },
+    [categories, handleCategoryChange, resetFilter]
+  );
+
+  // Transformar productos para el componente ProductResults
+  const displayProducts = useMemo(
+    () =>
+      sortedProducts.map((product) => ({
+        id: product.id,
+        name: product.name,
+        price: Number(product.price),
+        imageUrl:
+          product.images.find((img) => img.isPrimary)?.imageUrl ||
+          "/images/product-placeholder.jpg",
+        description:
+          product.comicDescription || product.description.substring(0, 100),
+        slug: product.slug,
+        category:
+          product.categories[0]?.category.name
+            .toLowerCase()
+            .replace(/\s+/g, "-") || "sin-categoria",
+      })),
+    [sortedProducts]
+  );
 
   return (
     <>
@@ -164,21 +234,29 @@ export default function CollectionPage() {
               Categorías Sobrenaturales
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {categories.map((category) => (
-                <div
-                  key={category.id}
-                  onClick={() =>
-                    handleCategoryChange(category.slug, category.id)
-                  }
-                >
-                  <CategoryCard
-                    id={category.id}
-                    name={category.name}
-                    imageUrl={category.imageUrl}
-                    slug={category.slug}
-                  />
-                </div>
-              ))}
+              {categoriesLoading
+                ? // Esqueleto de carga para categorías
+                  [...Array(4)].map((_, index) => (
+                    <div key={index} className="animate-pulse">
+                      <div className="bg-gray-200 h-32 rounded-md mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    </div>
+                  ))
+                : categories.map((category) => (
+                    <div
+                      key={category.id}
+                      onClick={() =>
+                        handleCategoryChange(category.slug, category.id)
+                      }
+                    >
+                      <CategoryCard
+                        id={category.id}
+                        name={category.name}
+                        imageUrl={category.imageUrl}
+                        slug={category.slug}
+                      />
+                    </div>
+                  ))}
             </div>
           </section>
 
@@ -186,16 +264,12 @@ export default function CollectionPage() {
           <FilterSortBar
             categories={categories}
             activeCategory={activeCategory}
-            setActiveCategory={(slug) => {
-              const category = categories.find((c) => c.slug === slug);
-              if (category) {
-                handleCategoryChange(slug, category.id);
-              } else {
-                resetFilter();
-              }
-            }}
+            setActiveCategory={handleFilterCategoryChange}
             sortBy={sortBy}
-            setSortBy={setSortBy}
+            setSortBy={(value: string) => {
+              // Convert the string value to SortOption type
+              setSortBy(value as SortOption);
+            }}
           />
 
           {/* Resultado de productos filtrados */}
@@ -222,22 +296,7 @@ export default function CollectionPage() {
             </div>
           ) : (
             <ProductResults
-              products={sortedProducts.map((product) => ({
-                id: product.id,
-                name: product.name,
-                price: Number(product.price),
-                imageUrl:
-                  product.images.find((img) => img.isPrimary)?.imageUrl ||
-                  "/images/product-placeholder.jpg",
-                description:
-                  product.comicDescription ||
-                  product.description.substring(0, 100),
-                slug: product.slug,
-                category:
-                  product.categories[0]?.category.name
-                    .toLowerCase()
-                    .replace(/\s+/g, "-") || "sin-categoria",
-              }))}
+              products={displayProducts}
               activeCategory={activeCategory}
               categories={categories}
               resetFilter={resetFilter}
