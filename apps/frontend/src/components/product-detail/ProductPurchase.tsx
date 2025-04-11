@@ -4,6 +4,7 @@ import { useState } from "react";
 
 interface ProductPurchaseProps {
   onAddToCart: (quantity: number) => void;
+  stock?: number;
 }
 
 const ProductPurchase = ({ onAddToCart }: ProductPurchaseProps) => {

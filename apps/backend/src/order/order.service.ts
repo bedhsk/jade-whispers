@@ -338,6 +338,39 @@ export class OrderService {
     });
   }
 
+  async processPayment(orderId: number, paymentDetails: any, userId: number) {
+    // Verificar que el pedido existe
+    const order = await this.findOne(orderId, userId);
+
+    // Validar que el pedido está en estado pendiente
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('El pedido no está en estado pendiente');
+    }
+
+    // Simular procesamiento de pago (aquí se integraría con un proveedor de pagos real)
+    const paymentSuccess = paymentDetails && paymentDetails.paymentId;
+
+    if (!paymentSuccess) {
+      throw new BadRequestException('Error en el procesamiento del pago');
+    }
+
+    // Actualizar el estado del pedido a procesando
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: OrderStatus.PROCESSING,
+        paymentId: paymentDetails.paymentId,
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+  }
+
   // Validación de transiciones de estado
   private validateStatusTransition(
     currentStatus: OrderStatus,

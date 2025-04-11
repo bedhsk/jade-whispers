@@ -131,10 +131,12 @@ export class ProductImageService {
         },
       });
 
-      await this.prisma.productImage.update({
-        where: { id: anotherImage.id },
-        data: { isPrimary: true },
-      });
+      if (anotherImage) {
+        await this.prisma.productImage.update({
+          where: { id: anotherImage.id },
+          data: { isPrimary: true },
+        });
+      }
     }
 
     return this.prisma.productImage.delete({

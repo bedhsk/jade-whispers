@@ -134,4 +134,19 @@ export class OrderController {
   getUserOrderHistory(@Request() req) {
     return this.orderService.getUserOrderHistory(req.user.id);
   }
+
+  @Post(':id/process-payment')
+  @ApiOperation({ summary: 'Procesar el pago de un pedido' })
+  @ApiParam({ name: 'id', description: 'ID del pedido' })
+  @ApiResponse({ status: 200, description: 'Pago procesado exitosamente' })
+  @ApiResponse({ status: 400, description: 'Datos de pago inválidos' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 404, description: 'Pedido no encontrado' })
+  async processPayment(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() paymentDetails: any,
+    @Request() req,
+  ) {
+    return this.orderService.processPayment(id, paymentDetails, req.user.id);
+  }
 }

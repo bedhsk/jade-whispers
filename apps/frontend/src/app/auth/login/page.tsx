@@ -1,9 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { authService } from "@/services/api";
+
+// Componente para notificaciones
+function Notification({
+  message,
+  type,
+  onClose,
+}: {
+  message: string;
+  type: "success" | "error";
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 5000); // Cerrar automáticamente después de 5 segundos
+
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div
+      className={`fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"} max-w-xs`}
+    >
+      <div className="flex justify-between items-center">
+        <span>{message}</span>
+        <button
+          onClick={onClose}
+          className="ml-4 text-gray-500 hover:text-gray-800"
+        >
+          &times;
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +50,10 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -57,28 +97,79 @@ export default function LoginPage() {
 
     setIsLoading(true);
     setLoginError("");
+    setNotification(null);
 
     try {
-      // Aquí iría la lógica de autenticación real con tu backend
-      // Por ahora simulamos un login exitoso después de 1 segundo
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Verificar conectividad con el backend antes de intentar login
+      const isConnected = await authService.checkConnection();
 
-      // Simulación de un login exitoso
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id: 1,
-          name: "Usuario Demo",
-          email: formData.email,
-        })
-      );
+      if (!isConnected) {
+        throw new Error(
+          "No se pudo establecer conexión con el servidor. Por favor, verifica que el servidor backend esté en funcionamiento."
+        );
+      }
 
-      // Redireccionar a la página de inicio
-      router.push("/");
-    } catch (error) {
-      console.error("Error al iniciar sesión:", error);
-      setLoginError("Credenciales incorrectas. Por favor, inténtalo de nuevo.");
+      // Llamada al servicio de autenticación
+      const response = await authService.login({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // Usar el nombre correcto de la propiedad según el tipo LoginResponse
+      const token = response?.access_token;
+
+      if (!response || !token) {
+        throw new Error(
+          "Respuesta inválida del servidor. No se recibió el token de autenticación."
+        );
+      }
+
+      // Usar los métodos del servicio para almacenar credenciales
+      authService.setAuthToken(token);
+
+      if (response.user) {
+        authService.setUserData(response.user);
+      }
+
+      // Mostrar notificación de éxito
+      setNotification({
+        message: "¡Inicio de sesión exitoso! Redirigiendo...",
+        type: "success",
+      });
+
+      // Redirigir a la página principal después de un breve retraso para mostrar la notificación
+      setTimeout(() => {
+        router.push("/");
+      }, 2000);
+    } catch (error: any) {
+      // Limpiar cualquier token o datos de usuario que pudieran existir
+      authService.logout();
+
+      // Mostrar mensaje de error específico según la respuesta del servidor
+      if (error.response) {
+        // El servidor respondió con un código de estado de error
+        if (error.response.status === 401) {
+          setLoginError(
+            "Credenciales incorrectas. Por favor, inténtalo de nuevo."
+          );
+        } else if (error.response.data?.message) {
+          setLoginError(error.response.data.message);
+        } else {
+          setLoginError(
+            `Error del servidor: ${error.response.status} - ${error.response.statusText || "Error desconocido"}`
+          );
+        }
+      } else if (error.request) {
+        // La solicitud se realizó pero no se recibió respuesta
+        setLoginError(
+          "No se pudo conectar con el servidor. Verifica que el backend esté en funcionamiento en http://localhost:3000"
+        );
+      } else {
+        // Error al configurar la solicitud o error personalizado
+        setLoginError(
+          error.message || "Error desconocido durante la autenticación"
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -86,11 +177,18 @@ export default function LoginPage() {
 
   const handleSocialLogin = (provider: string) => {
     // En una implementación real, aquí se redigiría a la autenticación con el proveedor
-    console.log(`Iniciando sesión con ${provider}`);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f5f5f5]">
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 max-w-5xl w-full shadow-lg">
         {/* Panel izquierdo */}
         <div className="bg-[#1a3a3a] text-[#d1c5a5] p-10 flex flex-col">

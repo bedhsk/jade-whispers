@@ -1,9 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { authService } from "@/services/api";
+
+// Componente para notificaciones
+function Notification({
+  message,
+  type,
+  onClose,
+}: {
+  message: string;
+  type: "success" | "error";
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 5000); // Cerrar automáticamente después de 5 segundos
+
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div
+      className={`fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"} max-w-xs`}
+    >
+      <div className="flex justify-between items-center">
+        <span>{message}</span>
+        <button
+          onClick={onClose}
+          className="ml-4 text-gray-500 hover:text-gray-800"
+        >
+          &times;
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -18,6 +54,10 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [registerError, setRegisterError] = useState("");
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -75,30 +115,76 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     setRegisterError("");
+    setNotification(null);
 
     try {
-      // Aquí iría la lógica de registro real con tu backend
-      // Por ahora simulamos un registro exitoso después de 1 segundo
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Verificar conectividad con el backend antes de intentar registro
+      const isConnected = await authService.checkConnection();
 
-      // Simulación de un registro exitoso
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id: 1,
-          name: formData.name,
-          email: formData.email,
-        })
-      );
+      if (!isConnected) {
+        throw new Error(
+          "No se pudo establecer conexión con el servidor. Por favor, verifica que el servidor backend esté en funcionamiento."
+        );
+      }
 
-      // Redireccionar a la página de inicio
-      router.push("/");
-    } catch (error) {
-      console.error("Error al registrarse:", error);
-      setRegisterError(
-        "Error al crear la cuenta. Por favor, inténtalo de nuevo."
-      );
+      // Llamada real al servicio de registro
+      const response = await authService.register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // Guardar el token y datos del usuario usando los métodos del servicio
+      if (response.access_token) {
+        authService.setAuthToken(response.access_token);
+      }
+
+      if (response.user) {
+        authService.setUserData(response.user);
+      }
+
+      // Mostrar notificación de éxito
+      setNotification({
+        message: "¡Registro exitoso! Bienvenido a Jade Whispers.",
+        type: "success",
+      });
+
+      // Redireccionar a la página de inicio después de un breve retraso
+      setTimeout(() => {
+        router.push("/");
+      }, 2000);
+    } catch (error: any) {
+      // Limpiar cualquier token o datos de usuario que pudieran existir
+      authService.logout();
+
+      // Mostrar mensaje de error según la respuesta del servidor
+      if (error.response?.status === 400) {
+        // Si el error es específico, por ejemplo un email que ya existe
+        if (error.response.data?.message) {
+          // El backend puede devolver un array de mensajes o un solo mensaje
+          const message = Array.isArray(error.response.data.message)
+            ? error.response.data.message[0]
+            : error.response.data.message;
+
+          setRegisterError(message);
+        } else {
+          setRegisterError("Los datos proporcionados no son válidos.");
+        }
+      } else if (error.response?.status === 409) {
+        // Conflicto - usuario ya existe
+        setRegisterError(
+          "El correo electrónico ya está registrado. Prueba iniciar sesión."
+        );
+      } else if (error.request) {
+        setRegisterError(
+          "No se pudo conectar con el servidor. Verifica que el backend esté en funcionamiento."
+        );
+      } else {
+        setRegisterError(
+          error.message ||
+            "Error al crear la cuenta. Por favor, inténtalo de nuevo más tarde."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -106,11 +192,18 @@ export default function RegisterPage() {
 
   const handleSocialLogin = (provider: string) => {
     // En una implementación real, aquí se redigiría a la autenticación con el proveedor
-    console.log(`Registrándose con ${provider}`);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f5f5f5]">
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 max-w-5xl w-full shadow-lg">
         {/* Panel izquierdo */}
         <div className="bg-[#1a3a3a] text-[#d1c5a5] p-10 flex flex-col items-center justify-center">
@@ -153,7 +246,7 @@ export default function RegisterPage() {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border ${errors.name ? "border-red-500" : "border-gray-300"} rounded focus:outline-none focus:ring-2 focus:ring-[#d98c53]`}
+                className={`w-full px-3 py-2 border ${errors.name ? "border-red-500" : "border-gray-300"} rounded focus:outline-none focus:ring-2 focus:ring-[#d98c53] text-[#1a3a3a]`}
                 placeholder="Tu nombre"
                 disabled={isLoading}
               />
@@ -175,7 +268,7 @@ export default function RegisterPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border ${errors.email ? "border-red-500" : "border-gray-300"} rounded focus:outline-none focus:ring-2 focus:ring-[#d98c53]`}
+                className={`w-full px-3 py-2 border ${errors.email ? "border-red-500" : "border-gray-300"} rounded focus:outline-none focus:ring-2 focus:ring-[#d98c53] text-[#1a3a3a]`}
                 placeholder="ejemplo@email.com"
                 disabled={isLoading}
               />
@@ -197,7 +290,7 @@ export default function RegisterPage() {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border ${errors.password ? "border-red-500" : "border-gray-300"} rounded focus:outline-none focus:ring-2 focus:ring-[#d98c53]`}
+                className={`w-full px-3 py-2 border ${errors.password ? "border-red-500" : "border-gray-300"} rounded focus:outline-none focus:ring-2 focus:ring-[#d98c53] text-[#1a3a3a]`}
                 placeholder="••••••••"
                 disabled={isLoading}
               />
@@ -219,7 +312,7 @@ export default function RegisterPage() {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border ${errors.confirmPassword ? "border-red-500" : "border-gray-300"} rounded focus:outline-none focus:ring-2 focus:ring-[#d98c53]`}
+                className={`w-full px-3 py-2 border ${errors.confirmPassword ? "border-red-500" : "border-gray-300"} rounded focus:outline-none focus:ring-2 focus:ring-[#d98c53] text-[#1a3a3a]`}
                 placeholder="••••••••"
                 disabled={isLoading}
               />
