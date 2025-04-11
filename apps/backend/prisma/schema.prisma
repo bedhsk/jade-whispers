@@ -43,27 +43,31 @@ model Address {
 }
 
 model Product {
-  id                  Int               @id @default(autoincrement())
-  name                String
-  description         String
-  comicDescription    String? // Para tu descripción cómica
-  supernaturalStory   String? // Para la historia sobrenatural
-  price               Decimal           @db.Decimal(10, 2)
-  stock               Int               @default(0)
-  dynasty             String? // Ej: Ming, Qing, etc.
-  material            String? // Ej: Jade, Porcelana, etc.
-  dimensions          String?
-  weight              Float?
-  certificateId       String? // ID único del certificado sobrenatural
-  origin              String? // Origen de la antigüedad
-  featured            Boolean           @default(false)
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  images              ProductImage[]
-  categories          CategoryProduct[]
-  orderItems          OrderItem[]
-  reviews             Review[]
-  supernaturalEffects ProductEffect[]
+  id                      Int               @id @default(autoincrement())
+  name                    String
+  slug                    String            @unique // Campo para URL amigables
+  description             String
+  comicDescription        String? // Para tu descripción cómica
+  supernaturalStory       String? // Para la historia sobrenatural
+  supernaturalPowers      String? // Descripción de los poderes sobrenaturales
+  paranormalActivityLevel Int?              @default(50) // Nivel de 0-100
+  careInstructions        String? // Instrucciones de cuidado
+  price                   Decimal           @db.Decimal(10, 2)
+  stock                   Int               @default(0)
+  dynasty                 String? // Ej: Ming, Qing, etc.
+  material                String? // Ej: Jade, Porcelana, etc.
+  dimensions              String?
+  weight                  Float?
+  certificateId           String? // ID único del certificado sobrenatural
+  origin                  String? // Origen de la antigüedad
+  featured                Boolean           @default(false)
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  images                  ProductImage[]
+  categories              CategoryProduct[]
+  orderItems              OrderItem[]
+  reviews                 Review[]
+  supernaturalEffects     ProductEffect[]
 }
 
 model ProductImage {

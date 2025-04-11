@@ -9,7 +9,12 @@ interface Product {
   description: string;
   imageUrl?: string;
   slug?: string;
-  category?: string;
+  category?:
+    | string
+    | {
+        name: string;
+        slug: string;
+      };
 }
 
 interface RelatedProductsProps {

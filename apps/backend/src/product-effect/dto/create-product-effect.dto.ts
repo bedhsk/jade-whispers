@@ -27,7 +27,7 @@ export class CreateProductEffectDto {
   })
   @IsOptional()
   @IsBoolean({ message: 'isGuaranteed debe ser un booleano' })
-  isGuaranteed?: boolean = false;
+  isGuaranteed?: boolean;
 }
 
 export class UpdateProductEffectDto {

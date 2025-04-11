@@ -163,6 +163,14 @@ export class ProductController {
     return this.productService.findOne(id);
   }
 
+  @Get('slug/:slug')
+  @ApiOperation({ summary: 'Obtener un producto por su slug' })
+  @ApiResponse({ status: 200, description: 'Producto encontrado' })
+  @ApiResponse({ status: 404, description: 'Producto no encontrado' })
+  async findBySlug(@Param('slug') slug: string) {
+    return this.productService.findBySlug(slug);
+  }
+
   @Get(':id/related')
   @ApiOperation({ summary: 'Obtener productos relacionados' })
   @ApiParam({ name: 'id', description: 'ID del producto base' })

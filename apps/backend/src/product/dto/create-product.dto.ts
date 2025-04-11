@@ -11,6 +11,7 @@ import {
   Min,
   MaxLength,
   ArrayMinSize,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -39,7 +40,7 @@ export class CreateProductImageDto {
   })
   @IsOptional()
   @IsBoolean({ message: 'isPrimary debe ser un booleano' })
-  isPrimary?: boolean = false;
+  isPrimary?: boolean;
 
   @ApiProperty({
     description: 'Orden de visualización',
@@ -48,7 +49,7 @@ export class CreateProductImageDto {
   })
   @IsOptional()
   @IsNumber({}, { message: 'La posición debe ser un número' })
-  position?: number = 0;
+  position?: number;
 
   @ApiProperty({
     description: 'Ancho de la imagen en píxeles',
@@ -80,6 +81,17 @@ export class CreateProductDto {
   name: string;
 
   @ApiProperty({
+    description:
+      'Slug para URL amigables (si no se proporciona, se genera automáticamente)',
+    example: 'tetera-dinastia-qing',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'El slug debe ser un texto' })
+  @MaxLength(255, { message: 'El slug no puede exceder los 255 caracteres' })
+  slug?: string;
+
+  @ApiProperty({
     description: 'Descripción técnica del producto',
     example:
       'Auténtica tetera de porcelana de la dinastía Qing (circa 1720), con patrón de flores de loto y dragones imperiales.',
@@ -107,6 +119,45 @@ export class CreateProductDto {
   @IsOptional()
   @IsString({ message: 'La historia sobrenatural debe ser un texto' })
   supernaturalStory?: string;
+
+  @ApiProperty({
+    description: 'Poderes sobrenaturales que posee el producto',
+    example:
+      'Escucha susurros del pasado y reorganiza tu librería mientras duermes',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Los poderes sobrenaturales deben ser un texto' })
+  supernaturalPowers?: string;
+
+  @ApiProperty({
+    description: 'Nivel de actividad paranormal (0-100)',
+    example: 75,
+    required: false,
+    default: 50,
+  })
+  @IsOptional()
+  @IsNumber(
+    {},
+    { message: 'El nivel de actividad paranormal debe ser un número' },
+  )
+  @Min(0, {
+    message: 'El nivel de actividad paranormal no puede ser menor que 0',
+  })
+  @Max(100, {
+    message: 'El nivel de actividad paranormal no puede ser mayor que 100',
+  })
+  paranormalActivityLevel?: number;
+
+  @ApiProperty({
+    description: 'Instrucciones de cuidado para el producto',
+    example:
+      'Mantener alejado de la luz solar directa. Limpiar con un paño suave y seco.',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Las instrucciones de cuidado deben ser un texto' })
+  careInstructions?: string;
 
   @ApiProperty({
     description: 'Precio del producto',
@@ -186,7 +237,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsBoolean({ message: 'featured debe ser un booleano' })
-  featured?: boolean = false;
+  featured?: boolean;
 
   @ApiProperty({
     description: 'Imágenes del producto',
